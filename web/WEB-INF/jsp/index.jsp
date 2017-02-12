@@ -1,10 +1,20 @@
-<%@ page language="java" pageEncoding="UTF-8" %>
-<%@ page import="javax.servlet.http.*,javax.servlet.*,websocket.Data" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.io.*,java.util.*,java.sql.*,websocket.Data"%>
+<%@ page import="javax.servlet.http.*,javax.servlet.*" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/sql" prefix="sql"%>
 <%
-String room = request.getParameter("room");
+String room = request.getParameter("room"); 
+String username= request.getSession().getAttribute("username").toString();
 %>
+<sql:setDataSource var="snapshot" driver="com.mysql.jdbc.Driver"
+     url="jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf-8"
+     user="root"  password="root"/>
+ 
+<sql:query dataSource="${snapshot}" var="result">
+    SELECT * from friend_list where username = '<%=username%>';
+</sql:query>
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,23 +24,24 @@ String room = request.getParameter("room");
     <link rel="stylesheet" type="text/css" href="css/demo.css"/>
     <script type="text/javascript" src="js/jquery1.42.min.js"></script>
     <script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
     <style>
         #message{
             position : absolute;
             top:0px;
-            transition:opacity 2s;
-            -moz-transition:opacity 2s; /* Firefox 4 */
-            -webkit-transition:opacity 2s; /* Safari and Chrome */
-            -o-transition:opacity 2s; /* Opera */
+            transition:opacity 0.3s;
+            -moz-transition:opacity 0.3s; /* Firefox 4 */
+            -webkit-transition:opacity 0.3s; /* Safari and Chrome */
+            -o-transition:opacity 0.3s; /* Opera */
         }
         #roomlist{
             position : absolute;
             top:0px;
             opacity:0;
-            transition:opacity 2s;
-            -moz-transition:opacity 2s; /* Firefox 4 */
-            -webkit-transition:opacity 2s; /* Safari and Chrome */
-            -o-transition:opacity 2s; /* Opera */
+            transition:opacity 0.3s;
+            -moz-transition:opacity 0.3s; /* Firefox 4 */
+            -webkit-transition:opacity 0.3s; /* Safari and Chrome */
+            -o-transition:opacity 0.3s; /* Opera */
         }
         .room{
             background:#f8f8f8;box-shadow: 0px 1px 0px rgba(255,255,255,.1), inset 0px 1px 1px rgba(214, 214, 214, 0.7);width:740px; border-radius:5px;position:relative; padding: 20px 0;
@@ -44,16 +55,33 @@ String room = request.getParameter("room");
             background:#f8f8f8;box-shadow: 0px 1px 0px rgba(255,255,255,.1), inset 0px 1px 1px rgba(214, 214, 214, 0.7);width:340px; border-radius:5px;position:relative; padding: 2px 0;
             margin:10px 0;font-size:14px;font-family:"宋体";
         }
+        .online{
+            background:#f8f8f8;box-shadow: 0px 1px 0px rgba(255,255,255,.1), inset 0px 1px 1px rgba(214, 214, 214, 0.7);width:140px; border-radius:5px;position:relative; padding: 2px 0;
+            margin:20px 0;font-size:14px;font-family:"宋体";text-align:center;
+        }
 
     </style>
 </head>
 <body>
-    Welcome ${username}<br/><input id="text" type="text" class="txt"/>
-    <button onclick="send()" class="bt">发送消息</button>
-    <br/>
+    Welcome ${username}<br/>
+    <div id="sendall" style="position: absolute; ">
+        <input id="text" type="text" class="txt"/>
+        <button onclick="send()" class="bt">发送消息</button>
+    </div>
+    <div id="sendf" style="position: absolute; display: none;">
+            <input id="fdto"  type="text" class="txt" oninput="search()"  onpropertychange="search()" style="width:120px;"/>
+            <input id="fdmess"  type="text" class="txt"/> 
+            <button onclick="sdto()" class="bt">发送消息</button>
+    </div>
+    <br/><br/>
     <button onclick="change()" class="bt">选择房间</button>
+    <button onclick="showfdwd()" class="bt">好友</button>
+    <button onclick="showonline()" class="bt">当前在线</button>
     <br/>
-    <div style="position: absolute; ">
+    <div id="onl" style="position:fixed;right:100px;top:150px;">
+        
+    </div>
+    <div id="rm" style="position: absolute; ">
         <div id="message"></div>
         <div id="roomlist">
             <div id="roomsn">
@@ -65,18 +93,25 @@ String room = request.getParameter("room");
         </div>
         
     </div>
+    <div id="fd" style="position: absolute; display: none;">
+        
+        <div id="fdword"></div>
+        
+        
+    </div>
     
 </body>
 
 <script type="text/javascript">
     var websocket = null;
+    var fdw=new Array();
     if("<%=room%>"=="null")
         inroom="public";
     else inroom="<%=room%>";
     getroom("<%=Data.room%>");
     //判断当前浏览器是否支持WebSocket
     if ('WebSocket' in window) {
-        websocket = new WebSocket("ws://139.199.180.48:8080/webchat/websocket");
+        websocket = new WebSocket("ws://localhost:8080/webchat/websocket");
     }
     else {
         alert('当前浏览器 Not support websocket')
@@ -94,7 +129,14 @@ String room = request.getParameter("room");
 
     //接收到消息的回调方法
     websocket.onmessage = function (event) {
-        setMessageInnerHTML(event.data);
+        if(event.data.indexOf("online:") == 0){
+            var online = event.data.split(" ");
+            var i;
+            document.getElementById('onl').innerHTML="";
+            for(i=0;i<online.length;i++){
+                document.getElementById('onl').innerHTML+="<li class='online'>"+online[i]+"</li>";
+            }
+        }else setMessageInnerHTML(event.data);
     }
 
     //连接关闭的回调方法
@@ -113,6 +155,13 @@ String room = request.getParameter("room");
         if(inroom==myobj.room)
             document.getElementById('message').innerHTML = "<ul class='say_box'><div class='sy'><p>"+myobj.word+"</p>"+ "</div><span class='dateview'>"+myobj.name+"</span></ul>"
                 + document.getElementById('message').innerHTML;
+        if(myobj.to!=null){
+            fdw.push(myobj);
+            document.getElementById('fdword').innerHTML = "<ul class='say_box'><div class='sy'><p>"+myobj.mess+"</p>"+ "</div><span class='dateview'>"+myobj.name+"</span></ul>"
+                + document.getElementById('fdword').innerHTML;
+        }
+            
+        
     }
 
     //关闭WebSocket连接
@@ -122,8 +171,17 @@ String room = request.getParameter("room");
     }
     function addroom(){
     }
-
+    function showfdwd(){
+        document.getElementById('rm').style.display="none";
+        document.getElementById('sendall').style.display="none";
+        document.getElementById('sendf').style.display="block";
+        document.getElementById('fd').style.display="block";
+    }
     function change(){
+        document.getElementById('rm').style.display="block";
+        document.getElementById('sendall').style.display="block";
+        document.getElementById('sendf').style.display="none";
+        document.getElementById('fd').style.display="none";
         document.getElementById('message').style.opacity="0.0";
         document.getElementById('roomlist').style.opacity="1";
     }
@@ -140,9 +198,26 @@ String room = request.getParameter("room");
         var message = document.getElementById('text').value;
         websocket.send("{ 'room':'"+inroom+"' , 'word':'"+message+"' ,'name':'"+"${username}"+"'}");
     }
+    function sdto() {
+        var to = document.getElementById('fdto').value;
+        var mess = document.getElementById('fdmess').value;
+        websocket.send("{ 'to':'"+to+"' , 'mess':'"+mess+"' ,'name':'"+"${username}"+"'}");
+    }
     function backroom(){
         document.getElementById('message').style.opacity="1";
         document.getElementById('roomlist').style.opacity="0.0";
+    }
+    function search(){
+        document.getElementById('fdword').innerHTML = "";
+        for (x in fdw){
+            if(fdw[x].name.indexOf(fdto.value) >= 0)
+            document.getElementById('fdword').innerHTML = "<ul class='say_box'><div class='sy'><p>"+fdw[x].mess+"</p>"+ "</div><span class='dateview'>"+fdw[x].name+"</span></ul>"
+                + document.getElementById('fdword').innerHTML;
+        }
+    }
+    function showonline(){
+        if(document.getElementById('onl').style.display=="none")document.getElementById('onl').style.display="block";
+        else document.getElementById('onl').style.display="none";
     }
     $(function(){
         $(".aroom").click(function(){

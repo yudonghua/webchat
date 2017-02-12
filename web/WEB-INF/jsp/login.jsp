@@ -223,13 +223,13 @@ String password = (String)session.getAttribute("password");
 </div>
 </center>
 <script type="text/javascript">
-    var oSetting = new ActiveXObject("rcbdyctl.Setting");
-    ip = oSetting.GetIPAddress; 
-    alert(ip);
-            var sub = document.getElementById("login"); 
-                var username = "<%=username%>";
-                var password = "<%=password%>";
-                if(username!=="null"&&password!=="null")sub.click();;
+//    var oSetting = new ActiveXObject("rcbdyctl.Setting");
+//    ip = oSetting.GetIPAddress; 
+//    alert(ip);
+//            var sub = document.getElementById("login"); 
+//                var username = "<%=username%>";
+//                var password = "<%=password%>";
+//                if(username!=="null"&&password!=="null")sub.click();;
 
  
 
