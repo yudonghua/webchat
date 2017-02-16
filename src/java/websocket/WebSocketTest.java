@@ -36,12 +36,14 @@ public class WebSocketTest {
     /**
      * 连接建立成功调用的方法
      * @param session  可选的参数。session为与某个客户端的连接会话，需要通过它来给客户端发送数据
+     * @param config
+     * @throws java.io.IOException
      */
     @OnOpen
     public void onOpen(Session session,EndpointConfig config) throws IOException{
         this.httpSession= (HttpSession) config.getUserProperties().get(HttpSession.class.getName());
-        map.put(httpSession.getAttribute("username").toString(), session);
-        System.out.println( httpSession.getAttribute("username"));
+        map.put(this.httpSession.getAttribute("username").toString(), session);
+        System.out.println( this.httpSession.getAttribute("username"));
         this.session = session;
         webSocketSet.add(this);     //加入set中
         addOnlineCount();           //在线数加1
@@ -58,6 +60,7 @@ public class WebSocketTest {
 
     /**
      * 连接关闭调用的方法
+     * @throws java.io.IOException
      */
     @OnClose
     public void onClose() throws IOException{
@@ -80,6 +83,7 @@ public class WebSocketTest {
      * 收到客户端消息后调用的方法
      * @param message 客户端发送过来的消息
      * @param session 可选的参数
+     * @throws java.io.IOException
      */
     @OnMessage
     public void onMessage(String message, Session session) throws IOException {
